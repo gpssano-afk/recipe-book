@@ -2,7 +2,7 @@
 
 家庭のレシピ、ネットで見つけた料理、自分なりのアレンジを一か所に集める、スマートフォン向けのレシピ管理アプリです。「佐野家の定番」を見つけやすくし、将来は献立ルーレットで毎日の料理選びを助けるPWAを目指します。
 
-**Phase 1C（0.3.0）の開発版です。レシピブック・写真・定番に加え、バックアップ・復元・容量管理を実装しました。PWA・公開用CI・本番サイトはまだありません。**
+**Phase 1C（0.3.0）の開発版です。レシピブック・写真・定番に加え、バックアップ・復元・容量管理を実装しました。Android実機検証向けの手動Pagesワークフローを用意しています。PWA・一般利用向けの公開は未完了で、この変更ではデプロイしていません。**
 
 **この版には家庭の本番データを入力しないでください。写真込みのバックアップ・復元は実装済みですが、Android実機の操作・大容量時のメモリは未検証です。ブラウザのデータ削除・保存領域の解放・端末故障に備え、書き出したファイルを端末外にも保管してください。** アプリ内にも同じ案内を表示します。
 
@@ -11,11 +11,11 @@
 個人開発として開発・運用コストを最小限に抑え、初期版はAndroid Chromeのスマートフォン1台で使います。
 
 - React + TypeScript + Vite
-- GitHub Pagesの `/recipe-book/` サブパスに対応するhashルーティング（公開・PWAはPhase 4）
+- GitHub Pagesの `/recipe-book/` サブパスに対応するhashルーティング（実機検証は手動公開、一般利用・PWAはPhase 4）
 - IndexedDBでレシピを端末内保存。写真・履歴用のstoreもDB v1に用意
 - サーバー、ユーザー登録、ログイン、クラウドDB、有料APIは不要
 
-採用ライブラリはReact 19.3.0、React DOM 19.3.0、React Router 7.18.4、idb 8.0.4。Vite 7.3.7、TypeScript 5.9.3（strict）、ESLint、Vitest、fake-indexeddb、Playwrightを開発・検証に使用します。実際のバージョンはpackage.jsonとnpm lockfileで固定しています。追加理由・ライセンスは[DECISIONS](docs/DECISIONS.md#d13-phase-1aのライブラリとhashルーティング)に記録しています。
+採用ライブラリはReact 19.3.0、React DOM 19.3.0、React Router 7.18.4、idb 8.0.4。Vite 7.3.7、TypeScript 5.9.3（strict）、ESLint、Vitest、fake-indexeddb、Playwrightを開発・検証に使用します。実際のバージョンはpackage.jsonとnpm lockfileで固定しています。追加理由・ライセンスは[DECISIONS](docs/DECISIONS.md#d13-phase-1aのライブラリとhashルーティング2026-10-13)に記録しています。
 
 ## 開発・検証コマンド
 
@@ -33,6 +33,46 @@ npm run preview
 ```
 
 開発時は `http://localhost:5173/recipe-book/`、previewは `http://localhost:4173/recipe-book/` を開きます。E2Eはビルド済みのdistをローカルで配信します。Chromiumがなければ `npx playwright install chromium` を実行してください。Linuxで `/usr/bin/chromium` があれば自動使用します。別の実行ファイルは `CHROMIUM_PATH=/path/to/chromium npm run test:e2e` で指定できます。開発用キャッシュ先が書込み不可の場合は `npm ci --cache /tmp/recipe-npm-cache` を使用します。
+
+## GitHub Pagesでの実機検証用デプロイ（手動のみ）
+
+公開予定URLは **https://gpssano-afk.github.io/recipe-book/**、設定画面は https://gpssano-afk.github.io/recipe-book/#/settings です。Pagesでの配信は未検証です。このPRの作成だけでは公開されず、mainへのマージ・Pages設定変更・ワークフロー実行も今回の作業では行いません。
+
+後日、公開を判断した管理者が以下を行います。
+
+1. PRをレビューし、公開対象の変更をmainへマージします。マージやpushだけではデプロイされません。
+2. **Settings → Pages → Build and deployment → Source** を **GitHub Actions** に設定します。利用プラン・公開範囲を確認し、必要なら `github-pages` environmentにmainのみの制限と承認者を設定します。ワークフローはPagesを自動有効化しません。
+3. **Actions → Deploy to GitHub Pages (manual) → Run workflow** でブランチ **main** を選び、手動実行します。main以外を選んだ実行はスキップされます。
+4. Node.js 24で `npm ci` → 型検査 → lint → 単体/結合テスト → build → Chromium E2Eを実行します。全検証が成功すると `dist` だけをPages artifactへアップロードし、`github-pages` environmentへデプロイします。失敗時はデプロイへ進みません。完了後はenvironmentの実URLも確認してください。
+
+[ワークフロー](.github/workflows/deploy-pages.yml)の起動イベントは `workflow_dispatch` のみです。push・PR・スケジュールで自動公開せず、公開同士はconcurrencyで直列化します。Pages書込み・OIDC権限はdeploy jobだけに付与し、ActionsはコミットSHAで固定しています。カスタムドメインは設定せず、既存のVite baseとhashルーティングを使います。
+
+### 公開範囲とデータ消失リスク
+
+**手動実行すると、検証用でもHTML・JavaScript・CSSはインターネット上に公開され、URLを知る人は誰でもアクセスできます。ログインや家族限定のアクセス制限はありません。** 入力したレシピ・写真・バックアップはビルド成果物に含まれず、アプリからGitHubへアップロードもしません。架空レシピと自作画像を使い、家庭の実データ・バックアップ・認証情報をGit、Actionsログ、成果物へ入れないでください。
+
+IndexedDBは端末・ブラウザプロファイル・オリジン（プロトコル/ドメイン/ポート）に保存されます。localhostとPagesではデータを共有しません。Pages内の `/recipe-book/` はストレージの隔離境界ではなく、同じ `https://gpssano-afk.github.io` の他アプリとはオリジンを共有します。同じ端末の同じプロファイルを使う人からの保護もありません。
+
+サイトデータ削除、シークレットモード終了、保存領域の自動解放、端末故障などでデータを失う可能性があります。永続保存の許可やホーム画面への追加はバックアップの代替になりません。バックアップは暗号化されず、**復元は現在の全件を置き換え、取り消せません**。復元前に現在のデータを書き出し、ダウンロードされたJSONを確認して端末外にも保管してください。別URL・別プロファイルへ移る場合も旧環境で出力して新環境で復元します。
+
+### Android ChromeでのPhase 1Cテスト手順
+
+Pagesを後日手動公開した後、Android実機の通常のChromeタブで確認します。既存データがある場合は先にバックアップを保管し、全件置換は架空データだけの検証用プロファイルで確認してください。
+
+| 手順 / 対象 | 操作 | 期待結果 |
+| --- | --- | --- |
+| 1 / サブパス・hash | 公開URL、`#/recipes`、`#/settings` を直接開き、再読み込み。保存後の詳細URLでも再読み込み | CSS・JS・画面が読み込まれ、404や空白画面にならない |
+| 2 / T01・T07 | 架空レシピに自作の料理写真とスクリーンショットを添付。定番・タグ・元URLを設定して保存し、再読み込みとChromeの終了・再起動 | 本文・写真・表紙・順序・定番を維持。写真選択・撮影導線の可否も記録する |
+| 3 / T14・R12 | 設定で件数/容量を控え「バックアップを書き出す」。Androidのダウンロード先でJSONの存在/サイズを確認し、端末外へコピー | 写真込みファイルを保存できる。要求完了表示だけで保管成功と判断しない |
+| 4 / T15 | そのファイルを「復元ファイルを選ぶ」で選択。生成日時と現在/復元後の件数、チェックなしのボタン状態を確認し「復元をキャンセル」 | 未確認では復元不可。キャンセル後も既存データが変わらない |
+| 5 / T14 | 架空レシピを1件追加して同じファイルを再選択。現状も書き出し、置換チェックを入れ「置き換えて復元」。再起動・再出力 | 追加分は消え、元の写真・定番・タグ・元URL・順序を復元。空の別プロファイルでも同じファイルを復元できる |
+| 6 / T17 | 原本を残し、コピーを壊したJSONと、`formatVersion` を未来版にしたファイルを選ぶ | 理由を表示して拒否し、既存の本文・写真・件数を維持 |
+| 7 / T13・T18・R14 | 容量/永続保存状態を確認して許可を要求。小容量から段階的に画像40MiB・非画像8MiB・JSON64MiB以内の自作データで生成/選択/復元を繰り返す | 拒否/非対応でも利用でき、不明値を0と扱わない。所要時間、停止、メモリ不足、データ保全を記録。クラッシュ時は一般利用へ進まない |
+| 8 / T23 | 設定・復元確認を縦/横画面、文字拡大、ソフトキーボード、TalkBackで操作 | 件数・警告・確認チェック・ボタンが読めて操作できる |
+
+対象コミット（Actions実行のSHA）、端末名・Android/Chrome版、日時、URL、DB v1/バックアップ形式v1、fixtureの件数/容量、操作、期待結果、実結果、PASS/FAIL/未実行理由を[TEST_PLANの記録テンプレート](docs/TEST_PLAN.md#7-実行記録テンプレート)に記録します。私的データを証跡に含めません。T16の実容量枯渇・書込中のOS終了、T18の上限付近のメモリは、少量データの往復やPC試験だけでPASSにしません。
+
+**Android実機・GitHub Pages上の動作は今回未実行です。** PWA・Service Worker・オフライン再起動（T21/T22）は未実装で、このワークフローの追加では対応しません。
 
 ## Phase 1A〜1Cで動く機能
 

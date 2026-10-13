@@ -1,6 +1,6 @@
 # テスト計画
 
-状態：Phase 1A・1Bの検証結果を末尾へ追加。[機能仕様](PRODUCT_SPEC.md) / [画面設計](SCREEN_DESIGN.md) / [データ](DATA_MODEL.md) / [ロードマップ](ROADMAP.md)
+状態：Phase 1A〜1Cと手動Pagesワークフローの検証結果を末尾へ追加。[機能仕様](PRODUCT_SPEC.md) / [画面設計](SCREEN_DESIGN.md) / [データ](DATA_MODEL.md) / [ロードマップ](ROADMAP.md)
 
 以下の表は初期版全体のテスト計画。**Phase 1A・1Bの実行結果は末尾の各記録に限定する。バックアップ・履歴・PWA等の対象外部分は未実行で、要件ID全体をPASSと扱わない。** 文書のリンクやMarkdownの確認は、アプリの動作テストとは分けてPRに記録する。
 
@@ -197,3 +197,23 @@ UIの通常文字コントラストをWCAGの相対輝度式で計算した。�
 検証中、テストの定番ボタン名、JSON以外の写真URLを解放計数へ混ぜた計測、Playwrightの50MiBを超えるbuffer入力制約を修正した。大容量fixtureは一時ファイルで入力し、検証後に削除する。アプリの容量契約は変更していない。変更後に全E2Eを再実行した。
 
 **未検証**：Android実機のダウンロード・ファイル選択・写真を含む復元・上限付近のメモリ/性能、実際のブラウザ容量枯渇、書込中のOS強制終了/端末故障、TalkBack・実ソフトキーボード・片手操作。ブラウザのquota/abortは障害注入であり、OS強制終了の代用とはしない。64MiB付近のAndroid性能は公開条件として残る。Phase 2の履歴操作/ルーレット、Phase 3のWeb検索/まとめ貼り付け、Phase 4のPWA/オフライン/本番Pagesは未実装・未実行。全要件IDを一括PASSとはしない。
+
+## 11. Phase 1C実機検証用Pagesワークフロー（2026-10-13）
+
+対象：Phase 1Cのmain（`5e5df3e`）を基点とする手動Pagesワークフローと文書。対象コミットはPRに記録する。アプリ0.3.0、DB v1、バックアップ形式v1、Vite base/hashルーティング、依存関係、既存テストに差分なし。fixtureは既存テストが生成する架空レシピと自作画像のみ。
+
+環境：Debian GNU/Linux 13.6 / Node.js 24.19.0 / npm 11.9.0 / Chromium 154.0.8037.57 / actionlint 1.7.12。Playwrightはproduction buildをローカルの `/recipe-book/` で配信した。
+
+| 対象 | 操作・期待結果 | 実結果 |
+| --- | --- | --- |
+| 依存導入 | lockfile通りに `npm ci` | PASS |
+| 型検査 / lint / build | `npm run typecheck` / `npm run lint` / `npm run build` | PASS、警告0、既存baseのproduction build |
+| 単体/結合テスト | `npm test` | 6ファイル119件 PASS |
+| E2E | `npm run test:e2e`、写真込み往復・キャンセル/不正ファイル保全・上限状態・既存回帰 | 45件 PASS（PC Chromium） |
+| ワークフロー構文 | `actionlint .github/workflows/deploy-pages.yml` | PASS |
+| 公開条件の静的確認 | dispatchのみ、main限定、deployのbuild依存、jobごとの権限、Pages自動有効化なし、distのみのartifact、concurrency | PASS。push/PR/schedule起動なし、検証失敗でdeploy不可 |
+| 文書 / アセット | 相対リンク・アンカー、差分の空白、dist/index.htmlの `/recipe-book/assets/` 参照とファイル存在 | PASS |
+
+初回の依存取得とE2Eはサンドボックスのネットワーク/ローカル配信制限により実行できなかった。必要なネットワーク権限を付けて再実行し、上記の成功を確認した。Go経由のactionlint導入は環境のCLI制約で失敗したため、公式リリースをSHA-256照合して使用した。依存関係の変更は行っていない。
+
+**未実行**：GitHub Actions上のワークフロー実行、Pages設定変更・デプロイ・実URLのスモーク、Android実機のファイル選択/ダウンロード/復元、上限付近のメモリ、実容量枯渇/OS終了、TalkBack/実キーボード。mainへのマージと公開を行わない依頼のため、ワークフローは起動していない。PCのPASSをAndroidやPagesのPASSへ置き換えない。実機の操作・期待結果・記録方法は[README](../README.md#android-chromeでのphase-1cテスト手順)に記載した。PWA/オフラインは未実装。
