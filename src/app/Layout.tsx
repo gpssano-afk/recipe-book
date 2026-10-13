@@ -13,11 +13,13 @@ export function Layout() {
   useEffect(() => { window.scrollTo(0, 0); setMessage('') }, [location.pathname])
   useEffect(() => {
     const saved = (event: Event) => setMessage((event as CustomEvent<string>).detail)
+    const restored = () => { setSession(initialListSession); setFavoriteSession(initialListSession) }
+    window.addEventListener('recipe-data-restored', restored)
     window.addEventListener('recipe-favorite-saved', saved)
-    return () => window.removeEventListener('recipe-favorite-saved', saved)
+    return () => { window.removeEventListener('recipe-favorite-saved', saved); window.removeEventListener('recipe-data-restored', restored) }
   }, [])
   return <ListSessionContext.Provider value={{ session, setSession, favoriteSession, setFavoriteSession }}>
-    <header className="site-header"><Link to="/" className="brand"><BowlMark /><span>佐野家のごはん</span></Link><span className="version-label">開発版 1B</span></header>
+    <header className="site-header"><Link to="/" className="brand"><BowlMark /><span>佐野家のごはん</span></Link><span className="version-label">開発版 1C</span></header>
     <main className={editing ? 'content editing' : 'content'} id="main">{message && <p className="success" role="status">{message}</p>}<Outlet /></main>
     {!editing && <nav className="bottom-nav" aria-label="メインメニュー">
       <NavLink to="/" end><span aria-hidden="true">⌂</span>ホーム</NavLink>

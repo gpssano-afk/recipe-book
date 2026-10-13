@@ -1,3 +1,4 @@
+import { LossNotice } from '../components/BackupNotice'
 import { useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ConfirmDialog } from '../components/ConfirmDialog'
@@ -40,6 +41,7 @@ export function DetailPage() {
   if (!recipe) return <Missing />
   const message = (location.state as { message?: string } | null)?.message
   return <>
+    {data && <LossNotice meta={data.meta} />}
     <Link className="back-link" to="/recipes">← レシピ一覧</Link>
     {message && <p className="success" role="status">{message}</p>}
     <article className="recipe-detail">{recipe.coverImageId ? <StoredImage id={recipe.coverImageId} recipeId={recipe.id} label="表紙写真" revision={recipe.revision} /> : <PhotoPlaceholder />}

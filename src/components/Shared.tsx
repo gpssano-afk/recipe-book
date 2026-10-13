@@ -31,5 +31,5 @@ export function Missing({ screen = false }: { screen?: boolean }) {
   </section>
 }
 export function DevelopmentNotice() {
-  return <aside className="notice"><strong>テスト用の開発版です</strong><p>バックアップ・復元は未実装です。ブラウザのデータ削除や端末故障でレシピを失う可能性があります。家庭の本番データは入力しないでください。</p></aside>
+  return <aside className="notice"><strong>テスト用の開発版です</strong><p>写真を含むバックアップ・復元を利用できます。Android実機での操作と大容量データは未検証です。ブラウザのデータ削除や端末故障でレシピを失う可能性があります。家庭の本番データは入力しないでください。</p></aside>
 }

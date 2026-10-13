@@ -1,6 +1,6 @@
 # 機能仕様書
 
-設計日：2026-10-12。Phase 1Aの基本レシピ機能と1Bの写真・定番を2026-10-13に実装。本文は初期版全体の契約で、未実装部分を含む。今回の範囲は[ROADMAP](ROADMAP.md)を参照。
+設計日：2026-10-12。Phase 1Aの基本レシピ機能と1Bの写真・定番、1Cのバックアップ・復元・容量管理を2026-10-13に実装。本文は初期版全体の契約で、未実装部分を含む。今回の範囲は[ROADMAP](ROADMAP.md)を参照。
 
 [README](../README.md) / [画面](SCREEN_DESIGN.md) / [データ](DATA_MODEL.md) / [技術構成](ARCHITECTURE.md) / [テスト](TEST_PLAN.md) / [判断](DECISIONS.md)
 

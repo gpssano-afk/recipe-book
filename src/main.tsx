@@ -8,6 +8,7 @@ import { ListPage } from './pages/ListPage'
 import { DetailPage } from './pages/DetailPage'
 import { EditPage } from './pages/EditPage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
+import { SettingsPage } from './pages/SettingsPage'
 import './styles/app.css'
 
 // HashRouterと同じhash URLを使い、Data Routerの離脱ブロッカーを利用する。
@@ -21,8 +22,8 @@ const router = createHashRouter([{
     { path: '/recipes/new', element: <EditPage /> },
     { path: '/recipes/:id', element: <DetailPage /> },
     { path: '/recipes/:id/edit', element: <EditPage /> },
-    { path: '/roulette', element: <PlaceholderPage kind="roulette" /> },
-    { path: '/settings', element: <PlaceholderPage kind="settings" /> },
+    { path: '/roulette', element: <PlaceholderPage /> },
+    { path: '/settings', element: <SettingsPage /> },
     { path: '*', element: <Missing screen /> },
   ],
 }])

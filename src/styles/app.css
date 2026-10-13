@@ -151,3 +151,17 @@ dialog::backdrop { background: #33251f75; }
 .viewer-image.actual-size > img { width: auto; max-width: none; }
 @media (max-width: 359px) { .card-photo, .card-photo img { width: 84px; } }
 @media (min-width: 768px) { .image-previews, .detail-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+.settings-panel { padding: 20px; border: 1px solid var(--border); border-radius: 18px; background: #fffefa; margin: 20px 0; overflow-wrap: anywhere; }
+.settings-panel > button { width: 100%; margin-block: 8px; }
+.settings-values { margin: 0 0 20px; }
+.settings-values > div { padding-block: 12px; border-bottom: 1px solid #ecdfd1; display: grid; gap: 4px; }
+.settings-values dt { font-weight: 600; }
+.settings-values dd { margin: 0; color: #665045; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.actions > button, .actions > .button { flex: 1 1 120px; }
+.restore-preview table { width: 100%; border-collapse: collapse; margin-bottom: 20px; table-layout: fixed; }
+.restore-preview th, .restore-preview td { text-align: left; border-bottom: 1px solid var(--border); padding: 12px 4px; overflow-wrap: anywhere; }
+.restore-preview th:first-child { width: 56%; }
+.restore-preview .checkbox-label { margin-block: 20px; }
+@media (min-width: 600px) { .settings-values > div { grid-template-columns: 1fr 1fr; } }
