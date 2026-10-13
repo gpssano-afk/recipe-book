@@ -1,6 +1,6 @@
 # 技術構成・公開・外部取り込み設計
 
-状態：Phase 1Aの基本構成を実装。本文は初期版全体の設計で、PWA/公開/外部検索等は未実装。採用した具体バージョン・hashルーターの実装は[DECISIONS D13](DECISIONS.md#d13-phase-1aのライブラリとhashルーティング)を参照。[機能仕様](PRODUCT_SPEC.md) / [データモデル](DATA_MODEL.md) / [判断記録](DECISIONS.md)
+状態：Phase 1A・1Bを実装。画像はCanvas/Blob/createImageBitmapで処理し、追加依存はなし。本文は初期版全体の設計で、PWA/公開/外部検索等は未実装。採用した具体バージョン・hashルーターの実装は[DECISIONS D13](DECISIONS.md#d13-phase-1aのライブラリとhashルーティング)を参照。[機能仕様](PRODUCT_SPEC.md) / [データモデル](DATA_MODEL.md) / [判断記録](DECISIONS.md)
 
 ## 1. 技術構成
 

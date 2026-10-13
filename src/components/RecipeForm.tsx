@@ -5,13 +5,16 @@ import { readRecipe, readSnapshot, saveRecipe } from '../data/recipes'
 import { categories, emptyDraft, type Category, type Recipe, type RecipeDraft } from '../domain/types'
 import { validateDraft, ValidationError, type FieldErrors } from '../domain/validation'
 import { ConfirmDialog } from './ConfirmDialog'
+import { ImagePicker } from './ImagePicker'
+import { mediaSignature, type RecipeMedia } from '../domain/images'
+import { readRecipeImages } from '../data/images'
 
 interface IngredientRow { key: string; name: string; amount: string }
 interface StepRow { key: string; text: string }
-interface FormValues { title: string; category: Category; servings: string; cookingMinutes: string; memo: string; tags: string; sourceUrl: string; ingredients: IngredientRow[]; steps: StepRow[] }
+interface FormValues { title: string; category: Category; servings: string; cookingMinutes: string; memo: string; tags: string; sourceUrl: string; ingredients: IngredientRow[]; steps: StepRow[]; isFavorite: boolean }
 const rowKey = () => crypto.randomUUID()
-function valuesOf(draft: RecipeDraft): FormValues {
-  return { ...draft, servings: draft.servings?.toString() ?? '', cookingMinutes: draft.cookingMinutes?.toString() ?? '',
+function valuesOf(draft: RecipeDraft & { isFavorite?: boolean }): FormValues {
+  return { ...draft, isFavorite: draft.isFavorite ?? false, servings: draft.servings?.toString() ?? '', cookingMinutes: draft.cookingMinutes?.toString() ?? '',
     sourceUrl: draft.sourceUrl ?? '', tags: draft.tags.join('\n'),
     ingredients: (draft.ingredients.length ? draft.ingredients : [{ name: '', amount: '' }]).map(row => ({ ...row, key: rowKey() })),
     steps: (draft.steps.length ? draft.steps : ['']).map(text => ({ text, key: rowKey() })),
@@ -37,14 +40,20 @@ export function RecipeForm({ initialRecipe, initialDataRevision, dataRevision, r
   const operationId = useRef(initialRecipe?.id ?? crypto.randomUUID())
   const [errors, setErrors] = useState<FieldErrors>({})
   const [saveError, setSaveError] = useState('')
-  const [busy, setBusy] = useState(false)
+  const [savingOrReloading, setBusy] = useState(false)
+  const [processing, setProcessing] = useState(false)
+  const [media, setMedia] = useState<RecipeMedia>({ images: [], coverImageId: null })
+  const [mediaBaseline, setMediaBaseline] = useState(mediaSignature(media))
+  const [mediaLoading, setMediaLoading] = useState(!!initialRecipe?.imageIds.length)
+  const [mediaError, setMediaError] = useState('')
+  const busy = savingOrReloading || processing || mediaLoading
   const saving = useRef(false)
   const [savedId, setSavedId] = useState<string | null>(null)
   const [reloadOpen, setReloadOpen] = useState(false)
   const [missing, setMissing] = useState(false)
   const form = useRef<HTMLFormElement>(null)
   const navigate = useNavigate()
-  const dirty = JSON.stringify(values) !== baseline
+  const dirty = JSON.stringify(values) !== baseline || mediaSignature(media) !== mediaBaseline
   const blocker = useBlocker(!savedId && (dirty || busy))
   const changedElsewhere = dataRevision !== expected.dataRevision && !savedId
   useBeforeUnload(useCallback(event => {
@@ -54,10 +63,18 @@ export function RecipeForm({ initialRecipe, initialDataRevision, dataRevision, r
     if (savedId) navigate(`/recipes/${savedId}`, { replace: true, state: { message: 'レシピを保存しました。' } })
   }, [savedId, navigate])
   useEffect(() => {
+    if (!initialRecipe?.imageIds.length) return
+    let active = true
+    void readRecipeImages(initialRecipe).then(images => {
+      if (active) { const next = { images, coverImageId: initialRecipe.coverImageId }; setMedia(next); setMediaBaseline(mediaSignature(next)); setMediaLoading(false) }
+    }, error => { if (active) { setMediaError(error instanceof Error ? error.message : '写真を読み込めませんでした。'); setMediaLoading(false) } })
+    return () => { active = false }
+  }, [initialRecipe])
+  useEffect(() => {
     const viewport = window.visualViewport
     const update = () => {
       document.documentElement.style.setProperty('--keyboard-offset', `${Math.max(0, window.innerHeight - (viewport?.height ?? window.innerHeight) - (viewport?.offsetTop ?? 0))}px`)
-      if (document.activeElement instanceof HTMLElement && document.activeElement.matches('input, textarea, select')) document.activeElement.scrollIntoView({ block: 'center', behavior: 'instant' })
+      if (document.activeElement instanceof HTMLElement && document.activeElement.matches('textarea, select, input:not([type="checkbox"]):not([type="file"])')) document.activeElement.scrollIntoView({ block: 'center', behavior: 'instant' })
     }
     viewport?.addEventListener('resize', update); viewport?.addEventListener('scroll', update); update()
     return () => { viewport?.removeEventListener('resize', update); viewport?.removeEventListener('scroll', update); document.documentElement.style.removeProperty('--keyboard-offset') }
@@ -67,7 +84,7 @@ export function RecipeForm({ initialRecipe, initialDataRevision, dataRevision, r
   const errorFor = (field: string) => errors[field] ? <p id={`error-${field}`} className="field-error">{errors[field]}</p> : null
   async function submit(event: FormEvent) {
     event.preventDefault()
-    if (saving.current || missing || deleted) return
+    if (saving.current || busy || missing || deleted || mediaError || readError) return
     setSaveError(''); setErrors({})
     let draft: RecipeDraft
     try { draft = validateDraft(draftOf(values)) }
@@ -84,7 +101,7 @@ export function RecipeForm({ initialRecipe, initialDataRevision, dataRevision, r
     }
     saving.current = true; setBusy(true)
     try {
-      const recipe = await saveRecipe(draft, { id: operationId.current, expectedRevision: expected.revision, expectedDataRevision: expected.dataRevision })
+      const recipe = await saveRecipe(draft, { id: operationId.current, expectedRevision: expected.revision, expectedDataRevision: expected.dataRevision, isFavorite: values.isFavorite, media })
       setSavedId(recipe.id)
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : '保存できませんでした。')
@@ -96,8 +113,10 @@ export function RecipeForm({ initialRecipe, initialDataRevision, dataRevision, r
     try {
       const result = initialRecipe ? await readRecipe(operationId.current) : await readSnapshot()
       const recipe = 'recipe' in result ? result.recipe : undefined
+      const nextMedia = { images: recipe ? await readRecipeImages(recipe) : [], coverImageId: recipe?.coverImageId ?? null }
       const next = valuesOf(recipe ?? emptyDraft())
       setValues(next); setBaseline(JSON.stringify(next)); setExpected({ revision: recipe?.revision ?? null, dataRevision: result.meta.dataRevision })
+      setMedia(nextMedia); setMediaBaseline(mediaSignature(nextMedia)); setMediaError('')
       setErrors({}); setMissing(false); setReloadOpen(false)
     } catch (error) { setSaveError(error instanceof Error ? error.message : '読み込めませんでした。') }
     finally { setBusy(false) }
@@ -105,14 +124,15 @@ export function RecipeForm({ initialRecipe, initialDataRevision, dataRevision, r
   return <>
     <p className="eyebrow">{initialRecipe ? 'EDIT RECIPE' : 'NEW RECIPE'}</p><h1>{initialRecipe ? 'レシピを編集' : 'レシピを登録'}</h1>
     <p className="form-intro">料理名だけでも保存できます。<br />材料や手順は、あとから追加できます。</p>
-    <p className="help">写真・お気に入りはPhase 1Bで対応します。</p>
+    {mediaLoading && <p role="status">保存済みの写真を読み込み中…</p>}
+    {mediaError && <p className="error" role="alert">{mediaError} 写真を失わないよう保存を停止しています。</p>}
     {(readError || saveError) && <div className="error" role="alert"><strong>{saveError ? '保存できませんでした。入力はこの画面に残っています。' : 'データを読み込めません。入力はこの画面に残っています。'}</strong><p>{saveError || readError}</p></div>}
     {changedElsewhere && <p className="notice" role="status">別の画面でデータが更新されました。最新データを確認してから再編集してください。</p>}
-    {(changedElsewhere || saveError) && <button type="button" disabled={busy} onClick={() => setReloadOpen(true)}>最新データを読み直す</button>}
+    {(changedElsewhere || saveError || mediaError) && <button type="button" disabled={busy} onClick={() => setReloadOpen(true)}>最新データを読み直す</button>}
     {(missing || deleted) && <p className="error">このレシピは削除されました。必要な入力をコピーしてからキャンセルしてください。</p>}
     {Object.keys(errors).length > 0 && <p className="error" role="alert">入力内容に{Object.keys(errors).length}件のエラーがあります。各項目を確認してください。</p>}
     <form ref={form} id="recipe-form" onSubmit={event => { void submit(event) }}
-      onFocusCapture={event => { if (event.target.matches('input, textarea, select')) event.target.scrollIntoView({ block: 'center', behavior: 'instant' }) }} noValidate>
+      onFocusCapture={event => { if (event.target.matches('textarea, select, input:not([type="checkbox"]):not([type="file"])')) event.target.scrollIntoView({ block: 'center', behavior: 'instant' }) }} noValidate>
       <fieldset disabled={busy}><legend className="sr-only">レシピ情報</legend>
         <section className="form-section"><h2>基本情報</h2>
           <label htmlFor="title">料理名 <span className="required">必須</span></label><input id="title" value={values.title} {...errorProps('title')} onChange={event => update('title', event.target.value)} placeholder="例：わが家の肉じゃが" />{errorFor('title')}<p className="help">100文字以内</p>
@@ -122,6 +142,8 @@ export function RecipeForm({ initialRecipe, initialDataRevision, dataRevision, r
           <div className="filter-row"><div><label htmlFor="servings">人数（人分）</label><input id="servings" inputMode="numeric" value={values.servings} {...errorProps('servings')} onChange={event => update('servings', event.target.value)} />{errorFor('servings')}<p className="help">任意・1〜100人</p></div>
             <div><label htmlFor="cookingMinutes">調理時間（分）</label><input id="cookingMinutes" inputMode="numeric" value={values.cookingMinutes} {...errorProps('cookingMinutes')} onChange={event => update('cookingMinutes', event.target.value)} />{errorFor('cookingMinutes')}<p className="help">任意・1〜1,440分</p></div></div>
         </section>
+        <ImagePicker media={media} recipeId={operationId.current} disabled={busy || !!mediaError} onChange={setMedia} onProcessing={setProcessing} />
+        <label className="checkbox-label"><input type="checkbox" checked={values.isFavorite} onChange={event => update('isFavorite', event.target.checked)} />佐野家の定番にする</label>
         <section className="form-section"><h2>材料・分量</h2><p className="help">各100文字以内・100行まで。空の行は保存時に除きます。</p>{errorFor('ingredients')}
           {values.ingredients.map((row, i) => <div className="form-row" key={row.key}><p className="row-heading">材料 {i + 1}</p><div className="ingredient-inputs">
             <div><label htmlFor={`ingredient-${row.key}`}>材料名 {i + 1}</label><input id={`ingredient-${row.key}`} {...errorProps(`ingredients.${i}.name`)} value={row.name} onChange={event => update('ingredients', values.ingredients.map(item => item.key === row.key ? { ...item, name: event.target.value } : item))} />{errorFor(`ingredients.${i}.name`)}</div>
@@ -140,7 +162,7 @@ export function RecipeForm({ initialRecipe, initialDataRevision, dataRevision, r
         </section>
       </fieldset>
     </form>
-    <div className="form-actions"><button type="button" disabled={busy} onClick={() => navigate(initialRecipe && !deleted ? `/recipes/${operationId.current}` : '/recipes')}>キャンセル</button><button type="submit" form="recipe-form" className="primary" disabled={busy || missing || deleted || !!readError}>{busy ? '保存中…' : '保存する'}</button></div>
+    <div className="form-actions"><button type="button" disabled={busy} onClick={() => navigate(initialRecipe && !deleted ? `/recipes/${operationId.current}` : '/recipes')}>キャンセル</button><button type="submit" form="recipe-form" className="primary" disabled={busy || missing || deleted || !!readError || !!mediaError}>{processing ? '画像処理中…' : busy ? '処理中…' : '保存する'}</button></div>
     <ConfirmDialog open={blocker.state === 'blocked'} title="入力を破棄しますか？" cancelLabel="編集を続ける" confirmLabel="破棄して戻る" dangerous busy={busy}
       onCancel={() => { if (blocker.state === 'blocked') blocker.reset() }} onConfirm={() => { if (!busy && blocker.state === 'blocked') blocker.proceed() }}>
       <p>未保存の変更があります。破棄すると入力した内容は保存されません。</p>

@@ -5,6 +5,8 @@ import { ErrorState, Loading, Missing, PhotoPlaceholder } from '../components/Sh
 import { deleteRecipe, getDeleteCounts } from '../data/recipes'
 import { categories, type Recipe } from '../domain/types'
 import { useSnapshot } from '../hooks/useSnapshot'
+import { StoredImage } from '../components/Images'
+import { FavoriteButton } from '../components/FavoriteButton'
 
 interface DeleteTarget { recipe: Recipe; dataRevision: number; counts: { images: number; mealDecisions: number; cookingLogs: number } }
 const date = (value: string) => new Intl.DateTimeFormat('ja-JP', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
@@ -40,11 +42,13 @@ export function DetailPage() {
   return <>
     <Link className="back-link" to="/recipes">← レシピ一覧</Link>
     {message && <p className="success" role="status">{message}</p>}
-    <article className="recipe-detail"><PhotoPlaceholder />
+    <article className="recipe-detail">{recipe.coverImageId ? <StoredImage id={recipe.coverImageId} recipeId={recipe.id} label="表紙写真" revision={recipe.revision} /> : <PhotoPlaceholder />}
       <div className="detail-title"><span className="category-label">{categories[recipe.category]}</span><h1>{recipe.title}</h1>
+        <FavoriteButton recipe={recipe} dataRevision={data!.meta.dataRevision} />
         <div className="recipe-facts"><span>人数：{recipe.servings === null ? '未登録' : `${recipe.servings}人分`}</span><span>調理時間：{recipe.cookingMinutes === null ? '未登録' : `${recipe.cookingMinutes}分`}</span></div>
         <div className="tags">{recipe.tags.map(tag => <span key={tag}>{tag}</span>)}</div>
       </div>
+      {recipe.imageIds.length > 0 && <section className="detail-section"><h2>写真・スクリーンショット</h2><div className="detail-gallery">{recipe.imageIds.map((imageId, index) => <StoredImage key={imageId} id={imageId} recipeId={recipe.id} label={`添付画像${index + 1}`} revision={recipe.revision} />)}</div></section>}
       <section className="detail-section"><h2>材料・分量</h2>{recipe.ingredients.length ? <dl className="ingredients">{recipe.ingredients.map((row, i) => <div key={i}><dt>{row.name}</dt><dd>{row.amount || '分量未登録'}</dd></div>)}</dl> : <p className="muted">未登録</p>}</section>
       <section className="detail-section"><h2>調理手順</h2>{recipe.steps.length ? <ol className="steps">{recipe.steps.map((step, i) => <li key={i}><span className="step-number" aria-hidden="true">{i + 1}</span><p>{step}</p></li>)}</ol> : <p className="muted">未登録</p>}</section>
       <section className="detail-section"><h2>メモ</h2><p className="preserve-lines">{recipe.memo || '未登録'}</p></section>

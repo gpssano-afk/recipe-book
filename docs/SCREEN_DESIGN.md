@@ -1,6 +1,6 @@
 # 画面・操作設計
 
-状態：Phase 1AのS01/S03/S04/S05と保存済み検索を実装。写真・お気に入り・履歴・Web検索・設定機能は未実装。今回の範囲は[ROADMAP](ROADMAP.md)を参照。[機能仕様](PRODUCT_SPEC.md) / [データ](DATA_MODEL.md) / [テスト](TEST_PLAN.md)
+状態：Phase 1AのS01/S03/S04/S05と保存済み検索を実装。Phase 1Bの写真・お気に入り一覧S06とタグ絞り込みを実装。履歴・Web検索・設定機能は未実装。今回の範囲は[ROADMAP](ROADMAP.md)を参照。[機能仕様](PRODUCT_SPEC.md) / [データ](DATA_MODEL.md) / [テスト](TEST_PLAN.md)
 
 入力上限と保存ルールはPRODUCT_SPECを正本とする。以下の「保存」はDBのトランザクション完了を指す。
 

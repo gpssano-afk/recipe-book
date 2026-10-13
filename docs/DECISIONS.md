@@ -1,6 +1,6 @@
 # 設計判断・未確認事項
 
-設計日：2026-10-12。対象：初期版。2026-10-13にPhase 1A実装のD12/D13を追記。[README](../README.md) / [仕様](PRODUCT_SPEC.md) / [データ](DATA_MODEL.md) / [構成](ARCHITECTURE.md)
+設計日：2026-10-12。対象：初期版。2026-10-13にPhase 1A/1B実装のD12〜D14を追記。[README](../README.md) / [仕様](PRODUCT_SPEC.md) / [データ](DATA_MODEL.md) / [構成](ARCHITECTURE.md)
 
 ## 状態の意味
 
@@ -92,6 +92,14 @@ React 19.3.0/React DOM 19.3.0（MIT）、React Router 7.18.4（MIT）、idb 8.0.
 IndexedDBのネイティブAPIを直接各画面に書く代わりにidbを使用し、repositoryへ集約する。入力検証は設計どおり小さな手書き関数。UIフレームワーク、状態管理基盤、PWAプラグイン、画像/バックアップライブラリは1Aへ導入しない。
 
 開発・検証はVite 7.3.7（MIT）、TypeScript 5.9.3（Apache-2.0）、ESLint 9.39.5と型/React用lint補助（MIT）、Vitest 3.2.7（MIT）、fake-indexeddb 6.2.5（Apache-2.0）、Playwright 1.64.0（Apache-2.0）。Node.js 24.19.0/npm 11.9.0で互換性を検証し、Node 22.12以上を指定する。依存はpackage.jsonの完全版番号とpackage-lock.jsonで固定する。Testing LibraryはPlaywrightで実際のフォームを検証するため今回導入しない。ブラウザ依存とAndroid実機はfake-indexeddbで代用しない。
+
+## D14 Phase 1Bの画像処理・保存（2026-10-13）
+
+既存のCanvas/Blob/createImageBitmapを使い、新規依存は追加しない。JPEG/PNG/WebPのヘッダ・画素数・容量・アニメーションを復号前に検査し、復号後も寸法を照合する。EXIF方向を反映して再エンコードし、元画像や元の付随情報を保存しない。スクリーンショットはPNGを優先し、1MiBを超えればWebPと段階的な縮小を試す。サムネイルは料理写真だけに生成する。
+
+DB_VERSION=1と永続型を維持する。新旧画像・本文・metaは単一トランザクションで置き換え、保存失敗/取消では旧画像を削除しない。保存前に6枚/6,000枚/40MiB/非画像8MiBを検査し、全体の64MiB契約もこの上限の組合せで満たす。通常操作で全画像をbase64化せず、対象レシピの画像だけを処理する。カードは表示対象の表紙サムネイルのみを復号する。Object URL、ImageBitmap、Canvasは利用終了後に解放する。
+
+お気に入りはisFavoriteとrecipe revision/meta世代を同じ保存経路で更新する。一覧・詳細・フォームと定番専用一覧を共通化し、タグ選択のAND絞り込みも1Bで完成。バックアップ/復元は1Cへ残し、本番の家庭データを入力しない案内を継続する。アプリ版は0.2.0、ライブラリ版の更新はない。Androidの撮影、画像メモリ/可読性は公開前に実機で確認する。
 
 ## 未確認・未決定事項（継続）
 
