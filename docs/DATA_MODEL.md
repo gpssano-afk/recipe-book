@@ -1,6 +1,6 @@
 # データモデル・永続化設計
 
-状態：採用初期案、未実装。[機能仕様](PRODUCT_SPEC.md) / [構成](ARCHITECTURE.md) / [テスト](TEST_PLAN.md)
+状態：Phase 1AでRecipeと関連型、DB v1、レシピCRUD・meta計数を実装。画像操作・履歴操作・バックアップ・復元・将来移行は未実装。[機能仕様](PRODUCT_SPEC.md) / [構成](ARCHITECTURE.md) / [テスト](TEST_PLAN.md)
 
 ## 1. 型と不変条件
 
