@@ -1,6 +1,6 @@
 # 技術構成・公開・外部取り込み設計
 
-状態：Phase 1A・1B・1Cを実装。画像はCanvas/Blob/createImageBitmapで処理し、追加依存はなし。本文は初期版全体の設計で、PWA/公開/外部検索等は未実装。採用した具体バージョン・hashルーターの実装は[DECISIONS D13](DECISIONS.md#d13-phase-1aのライブラリとhashルーティング)を参照。[機能仕様](PRODUCT_SPEC.md) / [データモデル](DATA_MODEL.md) / [判断記録](DECISIONS.md)
+状態：Phase 1A・1B・1Cを実装。画像はCanvas/Blob/createImageBitmapで処理し、追加依存はなし。本文は初期版全体の設計。実機検証用の手動Pagesワークフローを用意したが、PWA/本番配信/外部検索等は未完了。採用した具体バージョン・hashルーターの実装は[DECISIONS D13](DECISIONS.md#d13-phase-1aのライブラリとhashルーティング2026-10-13)を参照。[機能仕様](PRODUCT_SPEC.md) / [データモデル](DATA_MODEL.md) / [判断記録](DECISIONS.md)
 
 ## 1. 技術構成
 
@@ -94,15 +94,17 @@ SWファイル更新だけでIndexedDBを消さない。配信のロールバッ
 
 Viteの `base` は `/recipe-book/`、アセット参照は `import.meta.env.BASE_URL` またはビルド済みimportを使用する。ルート絶対パス `/assets/...` を手書きしない。カスタムドメインへ変える場合はbase/manifest/SW scopeとデータ移転を同時に見直す。
 
-Phase 4でGitHub Actionsによる次の構成を実装する予定：
+Phase 1CのAndroid実機検証に向け、[手動Pagesワークフロー](../.github/workflows/deploy-pages.yml)を先行して用意した。`workflow_dispatch` のmain実行だけで型検査・lint・単体/結合テスト・build・Chromium E2Eを行い、成功した `dist` を配信する。Pagesの有効化は管理者が後日設定する（`enablement: false`）。Pages書込み/OIDC権限はdeploy jobだけに付与し、公開同士はconcurrencyで直列化する。実行手順・公開範囲・データ消失リスク・実機手順は[README](../README.md#github-pagesでの実機検証用デプロイ手動のみ)を参照。この変更ではmainへのマージ、Pages設定変更、デプロイを行っていない。
+
+Phase 4では本番公開に向け、次を確認・整備する。現行の先行ワークフローはpush/PRでは起動せず、main更新だけで自動公開しない：
 
 1. PRでは `npm ci` → 型検査 → lint →単体/結合テスト → build。E2Eも公開条件として実施する。PRから本番配信しない。
-2. レビュー後のmain更新または承認済み手動実行で同じ検証を行い、`dist` をPages artifactとしてアップロードする。
+2. レビュー後、mainを選んだ手動実行で同じ検証を行い、`dist` をPages artifactとしてアップロードする。main更新だけで公開しない。
 3. deploy jobだけに `pages: write` / `id-token: write`、通常jobに `contents: read` を付与し、Pages environmentへデプロイする。
 4. 競合する公開をconcurrencyで抑止。Actionsは互換性を確認してバージョン固定し、更新時に検証する。
 5. 実URLでサブパスのアセット、詳細URL再読込、manifest、SW scope、オフライン起動を確認する。
 
-今回Actionsファイル・アプリ・公開設定は作成/変更しない。GitHubの無料枠・Pages利用条件を公開前に確認し、課金設定を追加しない。家庭のバックアップや画像をビルド成果物へ含めず、テスト用サンプルも架空のものだけを使う。
+アプリ、Vite base、hashルーティング、DB、バックアップ形式、公開設定は変更しない。GitHubの無料枠・Pages利用条件を公開前に確認し、課金設定を追加しない。家庭のバックアップや画像をビルド成果物へ含めず、テスト用サンプルも架空のものだけを使う。
 
 同一オリジンの他のPagesアプリとはブラウザストレージの隔離境界を共有する。privateな家庭データは端末内にのみあり、公開アプリに認証はない。共有端末で同じブラウザプロファイルを使う人からの保護は行わない。
 
