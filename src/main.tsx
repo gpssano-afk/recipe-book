@@ -16,6 +16,7 @@ const router = createHashRouter([{
   children: [
     { path: '/', element: <HomePage /> },
     { path: '/recipes', element: <ListPage /> },
+    { path: '/favorites', element: <ListPage key="favorites" favoritesOnly /> },
     { path: '/search', element: <ListPage /> },
     { path: '/recipes/new', element: <EditPage /> },
     { path: '/recipes/:id', element: <DetailPage /> },

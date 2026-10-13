@@ -1,20 +1,22 @@
 import { Link } from 'react-router-dom'
 import { categories, type Recipe } from '../domain/types'
+import { StoredImage } from './Images'
+import { FavoriteButton } from './FavoriteButton'
 
 export function BowlMark() {
   return <svg viewBox="0 0 64 64" fill="none" aria-hidden="true"><path d="M12 31h40c-1 14-8 22-20 22S13 45 12 31Z" fill="currentColor"/><path d="M8 31h48M23 56h18" stroke="currentColor" strokeWidth="4" strokeLinecap="round"/><path d="M22 23c-7-8 8-10 1-18m10 18c-7-8 8-10 1-18m10 18c-7-8 8-10 1-18" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></svg>
 }
 export function PhotoPlaceholder({ compact = false }: { compact?: boolean }) {
-  return <div className={`photo-placeholder ${compact ? 'compact' : ''}`}><BowlMark /><span>写真はPhase 1Bで対応</span></div>
+  return <div className={`photo-placeholder ${compact ? 'compact' : ''}`}><BowlMark /><span>料理写真なし</span></div>
 }
-export function RecipeCard({ recipe }: { recipe: Recipe }) {
-  return <Link className="recipe-card" to={`/recipes/${recipe.id}`}>
-    <PhotoPlaceholder compact />
+export function RecipeCard({ recipe, dataRevision }: { recipe: Recipe; dataRevision: number }) {
+  return <article className="recipe-card"><Link className="recipe-card-link" to={`/recipes/${recipe.id}`}>
+    <div className="card-photo">{recipe.coverImageId ? <StoredImage id={recipe.coverImageId} recipeId={recipe.id} thumbnail label={`${recipe.title}の表紙`} revision={recipe.revision} /> : <PhotoPlaceholder compact />}</div>
     <div className="card-body"><span className="category-label">{categories[recipe.category]}</span><h2>{recipe.title}</h2>
       <p>{recipe.cookingMinutes === null ? '時間未登録' : `${recipe.cookingMinutes}分`}</p>
       {recipe.tags.length > 0 && <div className="tags">{recipe.tags.slice(0, 2).map(tag => <span key={tag}>{tag}</span>)}{recipe.tags.length > 2 && <span>+{recipe.tags.length - 2}</span>}</div>}
     </div><span className="card-arrow" aria-hidden="true">›</span>
-  </Link>
+  </Link><FavoriteButton recipe={recipe} dataRevision={dataRevision} /></article>
 }
 export function Loading() { return <p className="state-panel" role="status">読み込み中…</p> }
 export function ErrorState({ message, retry }: { message: string; retry?: () => void }) {
