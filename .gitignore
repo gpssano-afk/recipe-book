@@ -147,3 +147,7 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# 架空データのブラウザ試験成果物（ローカル確認用）
+test-results/
+playwright-report/

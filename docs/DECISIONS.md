@@ -1,6 +1,6 @@
 # 設計判断・未確認事項
 
-設計日：2026-10-12。対象：初期版、設計のみ。[README](../README.md) / [仕様](PRODUCT_SPEC.md) / [データ](DATA_MODEL.md) / [構成](ARCHITECTURE.md)
+設計日：2026-10-12。対象：初期版。2026-10-13にPhase 1A実装のD12/D13を追記。[README](../README.md) / [仕様](PRODUCT_SPEC.md) / [データ](DATA_MODEL.md) / [構成](ARCHITECTURE.md)
 
 ## 状態の意味
 
@@ -79,7 +79,21 @@ Service Workerはapp shellだけをキャッシュし、更新は利用者が保
 
 **採用初期案**：idb、React Router、vite-plugin-pwaを補助候補とし、通常のhooksと小さな純粋関数を中心にする。大規模な状態管理、汎用プラグイン、同期基盤は導入しない。テストでは保存・復元の失敗と参照整合性を優先し、単に実装を再現するテストを増やさない。
 
-## 未確認・未決定事項
+## D12 Phase 1A/1B/1Cへの分割（2026-10-13）
+
+**確定要件（今回の実装依頼）**：1Aは基本レシピCRUDと保存基盤、1Bは写真・お気に入り、1Cはバックアップ・復元・容量管理。2はルーレット/履歴、3は外部検索/URL登録専用導線、4はPWA/本番公開とする。元URLの手入力・保存・表示は1Aに含める。
+
+既存のPhase 1全体の要件は変えず、作業を分割する。バックアップ未完成の1Aを一般利用版とせず、READMEとホーム/設定に家庭の本番データを入力しない案内を置く。まとめ貼り付けプレビューはPhase 3、タグ選択絞り込みはPhase 1Bへ残す。DB v1の5storeと永続型は維持し、データ移行は不要。
+
+## D13 Phase 1Aのライブラリとhashルーティング（2026-10-13）
+
+React 19.3.0/React DOM 19.3.0（MIT）、React Router 7.18.4（MIT）、idb 8.0.4（ISC）を採用。RouterはPagesでrewrite不要のhash URLを維持し、未保存入力・ブラウザの戻るを`useBlocker`で確認するため、HashRouterと同じURL方式の`createHashRouter` + RouterProviderを使用する。HashRouterコンポーネントはData Router用のuseBlockerを使えないため、確認処理を独自の履歴書換えで実装する代替を避けた。ルート・公開base・DB形式の変更はない。
+
+IndexedDBのネイティブAPIを直接各画面に書く代わりにidbを使用し、repositoryへ集約する。入力検証は設計どおり小さな手書き関数。UIフレームワーク、状態管理基盤、PWAプラグイン、画像/バックアップライブラリは1Aへ導入しない。
+
+開発・検証はVite 7.3.7（MIT）、TypeScript 5.9.3（Apache-2.0）、ESLint 9.39.5と型/React用lint補助（MIT）、Vitest 3.2.7（MIT）、fake-indexeddb 6.2.5（Apache-2.0）、Playwright 1.64.0（Apache-2.0）。Node.js 24.19.0/npm 11.9.0で互換性を検証し、Node 22.12以上を指定する。依存はpackage.jsonの完全版番号とpackage-lock.jsonで固定する。Testing LibraryはPlaywrightで実際のフォームを検証するため今回導入しない。ブラウザ依存とAndroid実機はfake-indexeddbで代用しない。
+
+## 未確認・未決定事項（継続）
 
 初期版を着手できない仕様上の空白は残さず、暫定の基準を上記に置く。以下は実装や公開前に確認する。
 
@@ -88,7 +102,7 @@ Service Workerはapp shellだけをキャッシュし、更新は利用者が保
 | U01 | 主なAndroid端末、OS/Chrome版、写真枚数・年間レシピ数は未確認 | Phase 1早期 / 利用者と開発者 | 画像・バックアップ上限の実用性。暫定で最新安定Chromeの実機1台を主対象 |
 | U02 | 6カテゴリ、定番=お気に入り、最近除外7日、1回1品は採用初期案 | 初回UIレビュー / 利用者 | 文言・使いやすさ。未回答でも本案で着手可能 |
 | U03 | 64MiBバックアップ付近のメモリ、40MiB画像上限の妥当性は未確認 | Phase 1、公開前 / 開発者 | 生成・検証・復元のクラッシュ防止。実機で不成立なら公開前に変更 |
-| U04 | Node.js、ライブラリの具体バージョンは未決定 | Phase 1開始 / 開発者 | 互換性確認のうえlockfileで確定 |
+| U04 | Phase 1Aの具体バージョンはD13とnpm lockfileで確定 | Phase 1A / 開発者 | Node.js 24.19.0で型検査・lint・テスト・ビルド。後続Phaseの追加依存は採用時に確認 |
 | U05 | Pages/Actionsの設定・公開URL・無料枠の最新条件は未確認 | Phase 4公開前 / 管理者と開発者 | 想定URL・サブパス・課金なし運用の確認 |
 | U06 | PWAインストール、撮影入力、persist許可、オフライン更新の端末差は未確認 | Phase 1〜4 / 開発者 | 通常ファイル選択やブラウザ利用の代替導線が必要 |
 | U07 | アプリ用の正式アイコンは未作成 | Phase 4 / 開発者、必要に応じ利用者 | 自作/利用許諾のある素材を使う。家庭写真を公開素材にしない |
