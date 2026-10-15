@@ -217,3 +217,24 @@ UIの通常文字コントラストをWCAGの相対輝度式で計算した。�
 初回の依存取得とE2Eはサンドボックスのネットワーク/ローカル配信制限により実行できなかった。必要なネットワーク権限を付けて再実行し、上記の成功を確認した。Go経由のactionlint導入は環境のCLI制約で失敗したため、公式リリースをSHA-256照合して使用した。依存関係の変更は行っていない。
 
 **未実行**：GitHub Actions上のワークフロー実行、Pages設定変更・デプロイ・実URLのスモーク、Android実機のファイル選択/ダウンロード/復元、上限付近のメモリ、実容量枯渇/OS終了、TalkBack/実キーボード。mainへのマージと公開を行わない依頼のため、ワークフローは起動していない。PCのPASSをAndroidやPagesのPASSへ置き換えない。実機の操作・期待結果・記録方法は[README](../README.md#android-chromeでのphase-1cテスト手順)に記載した。PWA/オフラインは未実装。
+
+## 12. T18の画面遷移・Object URL解放の競合修正（2026-10-15）
+
+対象：[失敗Run 38414906424 / Job 115356662703](https://github.com/gpssano-afk/recipe-book/actions/runs/38414906424/job/115356662703)、main `3f90ee1`。ログはUbuntu 24.04.5 / Node 24.21.0 / Playwright Chromium 156.0.8078.4で44件PASS・1件FAIL、`backup.spec.ts:179` の即時判定がExpected 0 / Received 1だった。Runに取得可能なartifactはなかった。
+
+ローカルの通常実行では旧テストも10回成功したが、調査用に画面切替時のReact描画タスクを100ms遅延させると、クリック直後はhashが `#/`、見出しは「設定」、バックアップURLは1件だった。その後ホームの描画とcleanupが完了すると0件となり、アプリを変更せず同じ失敗を再現できた。クリック完了・hash更新だけでeffect cleanupまで完了したと扱うテストのタイミング競合と切り分けた。
+
+修正はT18のテストのみ。ホームURLとホーム見出しを確認し、既定の5秒以内に未解放URLが厳密に0件になることを `expect.poll` で検証する。出力前からPlaywright clockを導入し、出力後に時計を停止、離脱前に1件あることも確認する。30秒後の自動解放による偽の成功、未生成による偽の成功、遷移失敗を見逃さない。固定sleep、テスト全体のリトライ、許容件数、タイムアウトの拡大は追加しない。
+
+検証環境：Debian GNU/Linux 13.6 / Node 24.19.0 / npm 11.9.0 / Chromium 154.0.8037.57、production buildの `/recipe-book/`、`CI=1`・1 worker。fixtureは既存の架空データと自作画像。GitHub上と同一OS/ブラウザでの再実行とは扱わない。
+
+| 検証 | 実結果 |
+| --- | --- |
+| 対象T18（`--grep '生成中の別タブ更新' --repeat-each=10`） | 修正後10回連続PASS |
+| 描画タスク遅延の調査用条件 | 旧判定は0/1不一致を再現、修正後はPASS |
+| cleanupでのrevokeを一時的に除去したmutation | ホーム描画後も1件残り、時計停止中のpollが5秒でFAIL。解放漏れを検出できる |
+| ホームのクリックを一時的にpreventDefaultしたmutation | `#/settings` に残り、URL検証が5秒でFAIL。画面遷移不具合も検出できる |
+| 型検査 / lint / build / 単体・結合テスト | PASS、6ファイル119件PASS |
+| 全E2E（`CI=1 npm run test:e2e`） | 全45件PASS（1.4分）。調査用変更を除去し、アプリを元の状態で再buildして実行 |
+
+調査用の遅延・mutationは検証後にすべて除去した。アプリ本体・IndexedDB・バックアップ形式・Vite/hashルーティング・依存関係・Actionsワークフローに変更はない。公開ワークフローは修正後も同じT18を含む全E2Eを必須とし、skipやcontinue-on-errorを追加しない。Pagesへ続くActions実行の再実行・mainへのPush/マージ・公開・Android実機検証は今回行わない。
