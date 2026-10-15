@@ -160,6 +160,7 @@ test('T17: 不正ファイル・未来版・HTML・画像復号失敗で不変�
 })
 
 test('T18: 生成中の別タブ更新は旧スナップショットのみ。URLは離脱時に解放', async ({ page, context }) => {
+  await page.clock.install()
   await settings(page);const backup = await backupFixture(page);await restore(page, backup);await settings(page)
   await page.evaluate(() => {
     const decode = window.createImageBitmap
@@ -175,8 +176,16 @@ test('T18: 生成中の別タブ更新は旧スナップショットのみ。URL
   expect(output.recipes).toHaveLength(1)
   await expect(page.getByText('書き出しを開始しました。保存先のファイルを確認し、端末の外に保管してください。', { exact: true })).toBeVisible()
   const snapshot = await dbSnapshot(page);expect(snapshot.meta![0]).toMatchObject({ dataRevision: 2, lastExportRevision: 1 })
+  // 30秒後の自動解放で離脱時のcleanup漏れを隠さない。
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000))
+  const activeBackupUrlCount = () => page.evaluate(() => (window as unknown as { testActiveBackupUrls: Set<string> }).testActiveBackupUrls.size)
+  expect(await activeBackupUrlCount()).toBe(1)
   await page.getByRole('link', { name: 'ホーム', exact: true }).click()
-  expect(await page.evaluate(() => (window as unknown as { testActiveBackupUrls: Set<string> }).testActiveBackupUrls.size)).toBe(0);await other.close()
+  await expect(page).toHaveURL(/\/recipe-book\/#\/$/)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('今日のごはんをわが家のレシピから。')
+  // hashの更新・クリック完了だけではReactの画面切替とeffect cleanupは完了しない。
+  await expect.poll(activeBackupUrlCount).toBe(0)
+  await other.close()
 })
 
 test('T18: 初回の消失案内を確認、未出力の案内は閉じられる', async ({ page }) => {
